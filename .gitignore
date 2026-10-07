@@ -1,0 +1,34 @@
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+collectstatic/
+
+# Secrets (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+
+# ---- Node / Vite ----
+node_modules/
+dist/
+.vite/
+
+# ---- Project temp / artifacts ----
+_imgtmp/
+nul
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

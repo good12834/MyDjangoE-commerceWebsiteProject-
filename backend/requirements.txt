@@ -1,0 +1,15 @@
+Django>=5.2,<6.1
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.4
+channels[daphne]>=4.0
+django-cors-headers>=4.4
+django-filter>=24.3
+Pillow>=10.4
+celery>=5.4
+redis>=5.0
+stripe>=10.0
+python-dotenv>=1.0
+drf-spectacular>=0.27
+requests>=2.32
+# MySQL driver — uncomment when using DB_ENGINE=mysql
+# mysqlclient>=2.2

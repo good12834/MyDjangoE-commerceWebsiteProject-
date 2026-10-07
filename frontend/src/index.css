@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---------------------------------------------------------------
+     ShopHub design system — premium black / white foundation.
+     The "brand" scale is intentionally neutral (near-black) so the
+     whole app reads as minimal & premium and lets product photography
+     shine. The electric-blue accent is used sparingly for focus &
+     interactive highlights.
+     --------------------------------------------------------------- */
+  --color-brand-50: #f6f6f6;
+  --color-brand-100: #ededed;
+  --color-brand-200: #dcdcdc;
+  --color-brand-300: #bdbdbd;
+  --color-brand-400: #787878;
+  --color-brand-500: #3a3a3a;
+  --color-brand-600: #111111;
+  --color-brand-700: #000000;
+  --color-brand-800: #000000;
+  --color-brand-900: #000000;
+
+  /* Accent — electric blue */
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  --color-accent-700: #1d4ed8;
+
+  /* Semantic tokens from the design spec */
+  --color-canvas: #f8f8f8;
+  --color-ink: #171717;
+  --color-muted: #737373;
+  --color-line: #e5e5e5;
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --color-sale: #ef4444;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Poppins", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-canvas text-ink antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-400;
+}
+
+/* Hide scrollbar on horizontal product rails while keeping scroll */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-line;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white
+      hover:bg-brand-700 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm
+      font-semibold text-neutral-800 hover:border-brand-600 hover:text-brand-600 transition disabled:opacity-50;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent-600 px-5 py-2.5 text-sm font-semibold text-white
+      hover:bg-accent-700 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm outline-none
+      placeholder:text-neutral-400 focus:border-brand-600 focus:ring-2 focus:ring-neutral-200 transition;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  .section-title {
+    @apply text-2xl md:text-3xl font-extrabold tracking-[-0.02em] text-ink;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-muted;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-xl bg-neutral-200;
+  }
+}
