@@ -12,7 +12,7 @@ class Payment(models.Model):
         REFUNDED = "refunded", "Refunded"
 
     order = models.OneToOneField("orders.Order", on_delete=models.CASCADE, related_name="payment")
-    provider = models.CharField(max_length=20, default="mock")  # mock | stripe
+    provider = models.CharField(max_length=20, default="stripe")  # stripe
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=8, default="USD")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)

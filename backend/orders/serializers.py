@@ -95,7 +95,7 @@ class CheckoutSerializer(serializers.Serializer):
     address = serializers.DictField(required=False)
     delivery_method = serializers.ChoiceField(choices=Order.DeliveryMethod.choices, default="standard")
     payment_method = serializers.ChoiceField(
-        choices=["mock", "stripe", "card", "paypal", "apple_pay", "google_pay"],
+        choices=["card", "paypal", "apple_pay", "google_pay"],
         default="card",
     )
 

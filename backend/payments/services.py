@@ -1,4 +1,4 @@
-"""Payment providers: mock gateway (default) and Stripe (when key configured)."""
+"""Payment provider: Stripe Checkout."""
 import logging
 
 from django.conf import settings
@@ -11,62 +11,53 @@ from .models import Payment
 
 logger = logging.getLogger(__name__)
 
+_STRIPE_METHOD_TYPES = {
+    "card": ["card"],
+    "paypal": ["card", "paypal"],
+    "apple_pay": ["card"],
+    "google_pay": ["card"],
+}
+
 
 def _complete(order: Order, payment: Payment):
     payment.status = Payment.Status.COMPLETED
     payment.completed_at = timezone.now()
     payment.save(update_fields=["status", "completed_at"])
-    set_status(order, Order.Status.PAID, note="Payment confirmed.")
+    set_status(order, Order.Status.PAID, note="Payment confirmed via Stripe.")
     from analytics.tasks import send_order_confirmation_email  # celery task (eager w/o broker)
 
     send_order_confirmation_email.delay(order.pk)
 
 
 def initiate_payment(order: Order, method: str = "card") -> dict:
-    """Create a Payment for the order and run the chosen provider.
+    """Create a Payment for the order and run a Stripe Checkout Session.
 
     Returns a dict consumed by the frontend:
-      { status, provider, redirect_url?, payment_id, reference }
+      { status, provider, redirect_url, session_id, payment_id, reference }
     """
     payment, _ = Payment.objects.get_or_create(
         order=order,
-        defaults={"provider": method, "amount": order.total},
+        defaults={"provider": "stripe", "amount": order.total},
     )
-    payment.provider = method
+    payment.provider = "stripe"
     payment.amount = order.total
     payment.save(update_fields=["provider", "amount"])
 
-    if method == "stripe" and settings.USE_STRIPE:
-        return _stripe_checkout(order, payment)
-
-    # Simulated/Tokenized gateway: instant successful authorization without storing raw card details
-    import uuid
-
-    prefix = {
-        "card": "CARD",
-        "paypal": "PAYPAL",
-        "apple_pay": "APPLEPAY",
-        "google_pay": "GOOGLEPAY",
-        "mock": "MOCK",
-        "stripe": "STRIPE",
-    }.get(method, "PAY")
-
-    payment.reference = f"{prefix}-{uuid.uuid4().hex[:10].upper()}"
-    payment.raw_response = {"gateway": method, "simulated": True, "tokenized": True}
-    payment.save(update_fields=["reference", "raw_response"])
-    _complete(order, payment)
-    return {
-        "status": "completed",
-        "provider": method,
-        "payment_id": payment.pk,
-        "reference": payment.reference,
-    }
+    return _stripe_checkout(order, payment, method)
 
 
-def _stripe_checkout(order: Order, payment: Payment) -> dict:
+def _stripe_checkout(order: Order, payment: Payment, method: str = "card") -> dict:
     import stripe
 
+    if not settings.STRIPE_SECRET_KEY:
+        logger.error("STRIPE_SECRET_KEY is not configured.")
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=["status"])
+        return {"status": "failed", "provider": "stripe", "detail": "Stripe is not configured."}
+
     stripe.api_key = settings.STRIPE_SECRET_KEY
+    method_types = _STRIPE_METHOD_TYPES.get(method, ["card"])
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -82,7 +73,11 @@ def _stripe_checkout(order: Order, payment: Payment) -> dict:
                     "quantity": 1,
                 }
             ],
-            metadata={"order_id": order.pk},
+            payment_method_types=method_types,
+            metadata={
+                "order_id": str(order.pk),
+                "payment_method": method,
+            },
         )
     except Exception as e:  # pragma: no cover - network/keys
         logger.error("Stripe session creation failed: %s", e)
@@ -91,19 +86,20 @@ def _stripe_checkout(order: Order, payment: Payment) -> dict:
         return {"status": "failed", "provider": "stripe", "detail": str(e)}
 
     payment.reference = session.id
-    payment.raw_response = {"session_id": session.id}
+    payment.raw_response = {"session_id": session.id, "payment_method": method}
     payment.save(update_fields=["reference", "raw_response"])
     return {
         "status": "pending",
         "provider": "stripe",
         "redirect_url": session.url,
+        "session_id": session.id,
         "payment_id": payment.pk,
         "reference": session.id,
     }
 
 
 def handle_stripe_webhook(payload: bytes, sig_header: str) -> bool:
-    """Verify + process a Stripe webhook; returns True if it was an order completion."""
+    """Verify + process a Stripe webhook; returns True if it completed an order."""
     import stripe
 
     if not settings.STRIPE_WEBHOOK_SECRET:

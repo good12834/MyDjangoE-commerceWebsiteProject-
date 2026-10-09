@@ -6,7 +6,7 @@ Environment-driven configuration:
   * Cache    : Local memory by default; set REDIS_URL to use Redis.
   * Celery   : Eager (synchronous) by default; set CELERY_BROKER_URL to use Redis broker.
   * Email    : Console backend by default; set EMAIL_* vars for real SMTP.
-  * Payments : Mock gateway by default; set STRIPE_SECRET_KEY to use Stripe.
+  * Payments : Stripe Checkout (secret key from env required).
 """
 from datetime import timedelta
 from pathlib import Path
@@ -234,9 +234,9 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "ShopHub <no-reply@shophub.
 
 # ---------------------------------------------------------------- payments
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-USE_STRIPE = bool(STRIPE_SECRET_KEY)
 
 # ---------------------------------------------------------------- business rules
 LOW_STOCK_THRESHOLD = int(os.getenv("LOW_STOCK_THRESHOLD", "5"))

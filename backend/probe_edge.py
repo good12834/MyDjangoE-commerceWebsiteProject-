@@ -102,7 +102,7 @@ def main():
         requests.post(
             f"{BASE}/orders/checkout/",
             headers=ah,
-            json={"delivery_method": "standard", "payment_method": "mock"},
+            json={"delivery_method": "standard", "payment_method": "card"},
             timeout=20,
         ),
         expect=(200, 201, 400),

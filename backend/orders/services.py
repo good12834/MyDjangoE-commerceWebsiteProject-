@@ -40,7 +40,7 @@ def set_status(order, status, note="", by_user=None, save=True):
 
 @transaction.atomic
 def place_order(user, cart, address_data, delivery_method=Order.DeliveryMethod.STANDARD,
-                payment_method="mock"):
+                payment_method="card"):
     """Validate the cart, create the order + items, decrement stock, record coupon usage."""
     items = list(
         cart.items.filter(saved_for_later=False).select_related("product", "variant", "product__category")

@@ -97,7 +97,7 @@ def main():
         requests.post(
             f"{BASE}/orders/checkout/",
             headers={**auth_h, "Content-Type": "application/json"},
-            json={"address": address, "delivery_method": "standard", "payment_method": "mock"},
+            json={"address": address, "delivery_method": "standard", "payment_method": "card"},
             timeout=20,
         ),
         want=(200, 201),
@@ -118,7 +118,7 @@ def main():
     r = requests.post(
         f"{BASE}/payments/pay/{oid}/",
         headers={**auth_h, "Content-Type": "application/json"},
-        json={"method": "mock"},
+        json={"method": "card"},
         timeout=15,
     )
     print(f"[{'OK ' if r.status_code in (200, 400) else 'ERR'}] POST /payments/pay/<id>/ (again) -> {r.status_code}")

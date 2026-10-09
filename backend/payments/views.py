@@ -22,7 +22,7 @@ class PayOrderView(APIView):
             return Response({"detail": "Order not found."}, status=404)
         if order.status not in (Order.Status.PENDING, Order.Status.CANCELLED):
             return Response({"detail": "Order already paid."}, status=400)
-        method = request.data.get("method", "mock")
+        method = request.data.get("method", "card")
         result = initiate_payment(order, method)
         return Response(result)
 

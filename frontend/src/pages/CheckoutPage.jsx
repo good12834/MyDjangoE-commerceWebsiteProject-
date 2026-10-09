@@ -5,12 +5,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, CreditCard, MapPin, Package, Truck, Zap, Timer, Wallet, ShoppingBag,
   Lock, Shield, ChevronRight, CircleCheck, User,
-  Printer, ArrowRight, Info, Eye, EyeOff, SquareCheckBig,
+  Printer, ArrowRight,
 } from "lucide-react";
 import { api, errMsg, listOf } from "../lib/api";
 import { money, img } from "../lib/utils";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { loadStripe } from "@stripe/stripe-js";
+
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
+
+let stripePromise = null;
+const getStripe = () => {
+  if (!stripePromise && STRIPE_PUBLISHABLE_KEY) {
+    stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+  }
+  return stripePromise;
+};
 
 const STEPS = [
   { id: "shipping", label: "Shipping", icon: <MapPin size={16} /> },
@@ -56,15 +67,6 @@ const PAYMENT_METHODS = [
   },
 ];
 
-function getCardBrand(num = "") {
-  const clean = num.replace(/\D/g, "");
-  if (/^4/.test(clean)) return { name: "Visa", icon: <CreditCard size={18} />, color: "bg-blue-600 text-white" };
-  if (/^(5[1-5]|2[2-7])/.test(clean)) return { name: "Mastercard", icon: <CreditCard size={18} />, color: "bg-amber-600 text-white" };
-  if (/^3[47]/.test(clean)) return { name: "Amex", icon: <CreditCard size={18} />, color: "bg-sky-600 text-white" };
-  if (/^(6011|65)/.test(clean)) return { name: "Discover", icon: <CreditCard size={18} />, color: "bg-orange-600 text-white" };
-  return { name: "Card", icon: <CreditCard size={18} />, color: "bg-neutral-800 text-white" };
-}
-
 export default function CheckoutPage() {
   const { cart, invalidate } = useCart();
   const { user, ready } = useAuth();
@@ -74,13 +76,6 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState(null);
   const [delivery, setDelivery] = useState("standard");
   const [payment, setPayment] = useState("card");
-  const [cardForm, setCardForm] = useState({
-    number: "4242 •••• •••• 4242",
-    expiry: "12/28",
-    cvc: "•••",
-    name: user?.full_name ? user.full_name.toUpperCase() : "JOHN SMITH",
-    saveCard: true,
-  });
   const [error, setError] = useState("");
   const [placedOrder, setPlacedOrder] = useState(null);
 
@@ -97,10 +92,8 @@ export default function CheckoutPage() {
   });
 
   const placeOrder = useMutation({
-    mutationFn: async () => {
-      // Security rule: sensitive card details (raw number, CVV) are NEVER sent to the Django server!
-      // In production, Stripe Elements / Hosted Fields generates a secure paymentMethod token.
-      const payload = {
+     mutationFn: async () => {
+       const payload = {
         delivery_method: delivery,
         payment_method: payment,
         address,
@@ -108,9 +101,27 @@ export default function CheckoutPage() {
       const { data } = await api.post("/orders/checkout/", payload);
       return data;
     },
-    onSuccess: (data) => {
-      if (data.payment?.redirect_url) {
-        window.location.href = data.payment.redirect_url;
+    onSuccess: async (data) => {
+      if (data.payment?.session_id) {
+        const stripe = await getStripe();
+        if (!stripe) {
+          if (data.payment?.redirect_url) {
+            window.location.href = data.payment.redirect_url;
+            return;
+          }
+          setError("Stripe.js failed to load. Please try again.");
+          return;
+        }
+        const { error: stripeError } = await stripe.redirectToCheckout({
+          sessionId: data.payment.session_id,
+        });
+        if (stripeError) {
+          if (data.payment?.redirect_url) {
+            window.location.href = data.payment.redirect_url;
+            return;
+          }
+          setError(stripeError.message);
+        }
         return;
       }
       setPlacedOrder(data);
@@ -233,43 +244,42 @@ export default function CheckoutPage() {
             )}
 
             {step === 2 && (
-              <PaymentStep
-                value={payment}
-                onChange={setPayment}
-                cardForm={cardForm}
-                onCardFormChange={setCardForm}
-                totalAmount={money(t?.total)}
-                onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
-                onFastPay={() => {
-                  if (!address && addresses?.length) {
-                    const def = addresses.find((a) => a.is_default) || addresses[0];
-                    setAddress({
-                      full_name: def.full_name, phone: def.phone, line1: def.line1,
-                      city: def.city, state: def.state, postal_code: def.postal_code, country: def.country,
-                    });
-                  }
-                  setStep(3);
-                }}
-              />
+             <PaymentStep
+                 value={payment}
+                 onChange={setPayment}
+                 totalAmount={money(t?.total)}
+                 onBack={() => setStep(1)}
+                 onNext={() => setStep(3)}
+                 onFastPay={() => {
+                   if (!address && addresses?.length) {
+                     const def = addresses.find((a) => a.is_default) || addresses[0];
+                     setAddress({
+                       full_name: def.full_name, phone: def.phone, line1: def.line1,
+                       city: def.city, state: def.state, postal_code: def.postal_code, country: def.country,
+                     });
+                   }
+                   setStep(3);
+                 }}
+               />
+
             )}
 
             {step === 3 && (
-              <ReviewStep
-                address={address}
-                delivery={delivery}
-                payment={payment}
-                cardForm={cardForm}
-                items={items}
-                t={t}
-                isPending={placeOrder.isPending}
-                error={error}
-                onBack={() => setStep(2)}
-                onEditAddress={() => setStep(0)}
-                onEditDelivery={() => setStep(1)}
-                onEditPayment={() => setStep(2)}
-                onPlace={() => placeOrder.mutate()}
-              />
+             <ReviewStep
+                 address={address}
+                 delivery={delivery}
+                 payment={payment}
+                 items={items}
+                 t={t}
+                 isPending={placeOrder.isPending}
+                 error={error}
+                 onBack={() => setStep(2)}
+                 onEditAddress={() => setStep(0)}
+                 onEditDelivery={() => setStep(1)}
+                 onEditPayment={() => setStep(2)}
+                 onPlace={() => placeOrder.mutate()}
+               />
+
             )}
           </motion.div>
         </AnimatePresence>
@@ -476,30 +486,8 @@ function DeliveryStep({ value, onChange, onBack, onNext }) {
   );
 }
 
-/* ─── Step 3: Payment Methods & Interactive Card Form ─── */
-function PaymentStep({ value, onChange, cardForm, onCardFormChange, totalAmount, onBack, onNext, onFastPay }) {
-  const [showCvc, setShowCvc] = useState(false);
-  const brand = getCardBrand(cardForm.number);
-
-  const handleCardNumberChange = (e) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
-    const formatted = raw.match(/.{1,4}/g)?.join(" ") || raw;
-    onCardFormChange((prev) => ({ ...prev, number: formatted }));
-  };
-
-  const handleExpiryChange = (e) => {
-    let raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    if (raw.length > 2) {
-      raw = `${raw.slice(0, 2)}/${raw.slice(2)}`;
-    }
-    onCardFormChange((prev) => ({ ...prev, expiry: raw }));
-  };
-
-  const handleCvcChange = (e) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    onCardFormChange((prev) => ({ ...prev, cvc: raw }));
-  };
-
+/* ─── Step 3: Payment Methods (Stripe Checkout) ─── */
+function PaymentStep({ value, onChange, totalAmount, onBack, onNext, onFastPay }) {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -553,131 +541,16 @@ function PaymentStep({ value, onChange, cardForm, onCardFormChange, totalAmount,
                 )}
               </label>
 
-              {/* Expanded Card Form when Card is selected */}
-              {selected && m.id === "card" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.2 }}
-                  className="border-t border-line/60 bg-white p-5 rounded-b-2xl"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Card Payment Details</h3>
-                    <div className="flex items-center gap-1.5 text-xs text-muted">
-                      <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-semibold">VISA</span>
-                      <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-semibold">MC</span>
-                      <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-semibold">AMEX</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Card number */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-muted">Card number</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          maxLength={19}
-                          placeholder="1234 5678 9012 3456"
-                          value={cardForm.number}
-                          onChange={handleCardNumberChange}
-                          className="input font-mono text-sm tracking-wider pr-14"
-                        />
-                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[10px] font-bold ${brand.color}`}>
-                          {brand.name}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Expiry & CVC */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-muted">Expiry</label>
-                        <input
-                          type="text"
-                          maxLength={5}
-                          placeholder="MM / YY"
-                          value={cardForm.expiry}
-                          onChange={handleExpiryChange}
-                          className="input font-mono text-sm tracking-wider"
-                        />
-                      </div>
-                      <div>
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <label className="text-xs font-semibold text-muted">Security code</label>
-                          <span className="text-[10px] text-muted">CVC / CVV</span>
-                        </div>
-                        <div className="relative">
-                          <input
-                            type={showCvc ? "text" : "password"}
-                            maxLength={4}
-                            placeholder="•••"
-                            value={cardForm.cvc}
-                            onChange={handleCvcChange}
-                            className="input font-mono text-sm tracking-wider pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCvc(!showCvc)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-ink"
-                          >
-                            {showCvc ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Name on card */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-muted">Name on card</label>
-                      <input
-                        type="text"
-                        placeholder="JOHN SMITH"
-                        value={cardForm.name}
-                        onChange={(e) =>
-                          onCardFormChange((prev) => ({ ...prev, name: e.target.value.toUpperCase() }))
-                        }
-                        className="input uppercase text-sm font-medium tracking-wide"
-                      />
-                    </div>
-
-                    {/* Save card option */}
-                    <label className="flex cursor-pointer items-center gap-2 pt-1 text-xs text-muted hover:text-ink">
-                      <input
-                        type="checkbox"
-                        checked={cardForm.saveCard}
-                        onChange={(e) =>
-                          onCardFormChange((prev) => ({ ...prev, saveCard: e.target.checked }))
-                        }
-                        className="h-4 w-4 rounded accent-brand-600"
-                      />
-                      <span>Save payment method for future purchases</span>
-                    </label>
-                  </div>
-
-                  {/* Architecture reassurance */}
-                  <div className="mt-4 flex items-start gap-2 rounded-xl bg-neutral-50 p-3 text-xs text-muted">
-                    <Shield size={14} className="mt-0.5 shrink-0 text-emerald-600" />
-                    <span>
-                      <strong>Secure checkout:</strong> Card data is client-tokenized directly with our PCI-compliant provider.
-                      ShopHub never stores your raw card numbers or CVV on our servers.
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Details for PayPal / Apple Pay / Google Pay */}
-              {selected && m.id !== "card" && (
-                <div className="border-t border-line/60 bg-white p-4 rounded-b-2xl text-xs text-muted">
-                  <p className="flex items-center gap-2">
-                    <Lock size={13} className="text-emerald-600" />
-                    {m.id === "paypal" && "You'll authenticate securely via PayPal without sharing sensitive credentials."}
-                    {m.id === "apple_pay" && "Confirm instantly with Touch ID or Face ID on your authorized Apple device."}
-                    {m.id === "google_pay" && "Fast, encrypted 1-tap checkout using cards saved in your Google Account."}
-                  </p>
-                </div>
-              )}
-            </div>
+               {/* Selected method details */}
+               {selected && (
+                 <div className="border-t border-line/60 bg-white p-4 rounded-b-2xl text-xs">
+                   <p className="flex items-center gap-2 text-muted">
+                     <Lock size={13} className="text-emerald-600" />
+                     You'll be redirected to Stripe's secure checkout to complete your payment.
+                   </p>
+                 </div>
+               )}
+             </div>
           );
         })}
       </div>
@@ -712,10 +585,9 @@ function PaymentStep({ value, onChange, cardForm, onCardFormChange, totalAmount,
 }
 
 /* ─── Step 4: Review & Finalize ─── */
-function ReviewStep({ address, delivery, payment, cardForm, items, t, isPending, error, onBack, onEditAddress, onEditDelivery, onEditPayment, onPlace }) {
+function ReviewStep({ address, delivery, payment, items, t, isPending, error, onBack, onEditAddress, onEditDelivery, onEditPayment, onPlace }) {
   const deliveryLabel = DELIVERY.find((d) => d.id === delivery)?.label ?? delivery;
   const paymentObj = PAYMENT_METHODS.find((m) => m.id === payment);
-  const brand = getCardBrand(cardForm?.number);
 
   return (
     <div>
@@ -753,11 +625,9 @@ function ReviewStep({ address, delivery, payment, cardForm, items, t, isPending,
           <div className="flex items-center gap-2">
             <span className="grid place-items-center text-neutral-500">{paymentObj?.icon}</span>
             <span className="font-semibold text-ink">{paymentObj?.label}</span>
-            {payment === "card" && (
-              <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-mono text-muted">
-                {brand.name} •••• {cardForm?.number?.replace(/\D/g, "").slice(-4) || "4242"}
-              </span>
-            )}
+            <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium text-muted">
+              Stripe Checkout
+            </span>
           </div>
         </ReviewCard>
       </div>
