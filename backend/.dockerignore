@@ -1,0 +1,19 @@
+# Keep the build context small and never leak local secrets/state into the image.
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+!.env.example
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+.git/
+.gitignore
+*.log
+.DS_Store

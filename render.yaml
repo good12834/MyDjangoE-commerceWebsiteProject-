@@ -12,21 +12,21 @@ databases:
 services:
   - type: web
     name: shophub-api
-    runtime: python
+    # Docker (not the native Python runtime) so our Dockerfile fully controls the
+    # build: pinned Python 3.12, pip install, collectstatic, and startup.
+    runtime: docker
     plan: free
     region: oregon
-    rootDir: backend
-    buildCommand: bash build.sh
-    # Daphne (bundled with channels) serves the ASGI app: HTTP API + WebSockets.
-    startCommand: daphne -b 0.0.0.0 -p $PORT config.asgi:application
+    dockerContext: backend
+    dockerfilePath: ./Dockerfile
+    # The Dockerfile's CMD runs start.sh: migrate -> seed (first boot) -> Daphne.
+    dockerCommand: bash start.sh
     healthCheckPath: /api/schema/
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: shophub-db
           property: connectionString
-      - key: PYTHON_VERSION
-        value: "3.12.0"
       - key: DJANGO_DEBUG
         value: "0"
       # Leading-dot matches shophub-api.onrender.com and any Render subdomain.
