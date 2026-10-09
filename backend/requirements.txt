@@ -11,5 +11,9 @@ stripe>=10.0
 python-dotenv>=1.0
 drf-spectacular>=0.27
 requests>=2.32
+# ---- production (Render / PaaS) ----
+dj-database-url>=2.1        # parse DATABASE_URL into Django's DATABASES
+psycopg[binary]>=3.1        # PostgreSQL driver (Django 4.2+ uses psycopg 3)
+whitenoise>=6.6             # serve collected static files without a CDN
 # MySQL driver — uncomment when using DB_ENGINE=mysql
 # mysqlclient>=2.2

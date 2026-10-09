@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -92,7 +93,16 @@ CHANNEL_LAYERS = {
 
 # ---------------------------------------------------------------- databases
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").lower()
-if DB_ENGINE == "mysql":
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if DATABASE_URL:
+    # Managed Postgres (Render, Railway, Heroku, ...) injects DATABASE_URL.
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
+    }
+elif DB_ENGINE == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
@@ -136,6 +146,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# WhiteNoise serves collected static files (admin, DRF browsable API, API docs)
+# straight from the app in production — no separate web server or CDN needed.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 # ---------------------------------------------------------------- DRF
 REST_FRAMEWORK = {
@@ -243,3 +260,19 @@ LOW_STOCK_THRESHOLD = int(os.getenv("LOW_STOCK_THRESHOLD", "5"))
 FREE_SHIPPING_THRESHOLD = float(os.getenv("FREE_SHIPPING_THRESHOLD", "150"))
 SHIPPING_FLAT_RATE = float(os.getenv("SHIPPING_FLAT_RATE", "9.99"))
 TAX_RATE = float(os.getenv("TAX_RATE", "0.08"))
+
+# ---------------------------------------------------------------- production hardening
+# Applied only when DEBUG is off (i.e. on Render). Render terminates TLS at its
+# edge proxy and forwards X-Forwarded-Proto, so trust that header.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "1") == "1"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "3600"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    CSRF_TRUSTED_ORIGINS = [
+        o.strip()
+        for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+        if o.strip()
+    ]
