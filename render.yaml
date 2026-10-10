@@ -14,11 +14,19 @@ services:
     name: shophub-api
     # Docker (not the native Python runtime) so our Dockerfile fully controls the
     # build: pinned Python 3.12, pip install, collectstatic, and startup.
+    # NOTE: if your deploy log says `Running build command 'pip install -r
+    # requirements.txt'` + `Running 'gunicorn your_application.wsgi'`, that
+    # service was created as a MANUAL Python service (Render's Django placeholder
+    # defaults) and is IGNORING this Blueprint. Fix with ONE of:
+    #   (A, recommended) Delete the manual service; deploy via Blueprints so this
+    #       file is honored (Docker build + `bash start.sh` -> Daphne).
+    #   (B) Keep the manual service but set in its Settings:
+    #       Root Directory: backend | Build: bash build.sh | Start: bash start-native.sh
     runtime: docker
     plan: free
     region: oregon
-    dockerContext: backend
-    dockerfilePath: ./Dockerfile
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
     # The Dockerfile's CMD runs start.sh: migrate -> seed (first boot) -> Daphne.
     dockerCommand: bash start.sh
     healthCheckPath: /healthz/

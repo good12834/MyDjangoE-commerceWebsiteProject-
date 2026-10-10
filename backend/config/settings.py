@@ -21,6 +21,12 @@ import os  # noqa: E402
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-secret-key-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
+# Render injects RENDER_EXTERNAL_HOSTNAME (e.g. shophub-api.onrender.com) on every
+# native-Python deploy. Honor it automatically so a manual service works even if
+# DJANGO_ALLOWED_HOSTS was left at the placeholder value.
+_RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _RENDER_HOST and _RENDER_HOST not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_RENDER_HOST)
 
 INSTALLED_APPS = [
     "daphne",  # must be first: replaces runserver with ASGI-capable server
