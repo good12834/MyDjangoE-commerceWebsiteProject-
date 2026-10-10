@@ -25,6 +25,7 @@ dist/
 
 # ---- Project temp / artifacts ----
 _imgtmp/
+.freebuff/
 nul
 
 # ---- OS / editors ----
