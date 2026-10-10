@@ -15,5 +15,6 @@ requests>=2.32
 dj-database-url>=2.1        # parse DATABASE_URL into Django's DATABASES
 psycopg[binary]>=3.1        # PostgreSQL driver (Django 4.2+ uses psycopg 3)
 whitenoise>=6.6             # serve collected static files without a CDN
+channels-redis>=4.2         # Redis channel layer for WebSockets (activate via REDIS_URL)
 # MySQL driver — uncomment when using DB_ENGINE=mysql
 # mysqlclient>=2.2

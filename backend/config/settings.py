@@ -84,12 +84,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-CHANNEL_LAYERS = {
-    "default": {
-        # Swap to channels_redis (RedisChannelLayer) in production.
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+# ---------------------------------------------------------------- redis (shared by channels + cache)
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    # Production: real Redis broker so WebSocket notifications fan out across
+    # workers/instances (required once you run more than one Daphne process).
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [REDIS_URL]},
+        },
     }
-}
+else:
+    # Local/dev: in-memory layer only works within a single process.
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # ---------------------------------------------------------------- databases
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").lower()
@@ -208,7 +220,6 @@ CORS_ALLOW_HEADERS = (
 )
 
 # ---------------------------------------------------------------- cache (Redis optional)
-REDIS_URL = os.getenv("REDIS_URL", "")
 if REDIS_URL:
     CACHES = {
         "default": {
