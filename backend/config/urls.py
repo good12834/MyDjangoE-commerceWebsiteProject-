@@ -16,7 +16,26 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 
+def api_root(request):
+    """Landing page for humans hitting `/` (e.g. opening the Render URL).
+
+    The backend is an API — this just links to the browsable entry points
+    instead of showing Django's DEBUG 404 page.
+    """
+    return JsonResponse(
+        {
+            "name": "ShopHub API",
+            "status": "ok",
+            "docs": "/api/docs/",
+            "schema": "/api/schema/",
+            "health": "/healthz/",
+            "admin": "/admin/",
+        }
+    )
+
+
 urlpatterns = [
+    path("", api_root, name="api-root"),
     path("healthz/", healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
