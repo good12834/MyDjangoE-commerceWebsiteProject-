@@ -2,10 +2,22 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+
+def healthz(request):
+    """Liveness probe for Render.
+
+    Deliberately DB-free and never SSL-redirected (see SECURE_REDIRECT_EXEMPT in
+    settings.py) so the platform health check is fast and never flaps.
+    """
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path("healthz/", healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
     path("api/products/", include("products.urls")),

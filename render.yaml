@@ -21,7 +21,7 @@ services:
     dockerfilePath: ./Dockerfile
     # The Dockerfile's CMD runs start.sh: migrate -> seed (first boot) -> Daphne.
     dockerCommand: bash start.sh
-    healthCheckPath: /api/schema/
+    healthCheckPath: /healthz/
     envVars:
       - key: DATABASE_URL
         fromDatabase:

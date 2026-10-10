@@ -267,6 +267,9 @@ TAX_RATE = float(os.getenv("TAX_RATE", "0.08"))
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "1") == "1"
+    # Never redirect the health probe to HTTPS — Render's checker may reach us over
+    # plain HTTP internally, and a 301 there can be read as a failed health check.
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "3600"))
