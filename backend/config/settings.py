@@ -204,10 +204,35 @@ SIMPLE_JWT = {
 }
 
 # ---------------------------------------------------------------- CORS
-CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-    if o.strip()
+# The live API was returning `Access-Control-Allow-Origin: https://shophub-awd9.onrender.com`
+# while the production frontend moved to https://shophub-frontend-one.vercel.app,
+# so every preflight failed. Keep explicit allow-list (env-driven) AND always allow
+# the known production frontends + Vercel previews via regex, so a stale
+# CORS_ALLOWED_ORIGINS env var on Render can never break the frontend again.
+_KNOWN_FRONTENDS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://shophub-frontend-one.vercel.app",
+    "https://shophub-awd9.onrender.com",
+]
+CORS_ALLOWED_ORIGINS = list(
+    dict.fromkeys(
+        _KNOWN_FRONTENDS
+        + [
+            o.strip()
+            for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+            if o.strip()
+        ]
+    )
+)
+# Vercel preview deploys (e.g. shophub-frontend-one-abc123.vercel.app) + any
+# Render frontend. Regexes are evaluated in addition to the list above.
+# NOTE: kept narrow (shophub-frontend* only) — with CORS_ALLOW_CREDENTIALS=True
+# a broad `.*\.vercel\.app` pattern would let any Vercel site make credentialed
+# calls to the API.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://shophub-frontend.*\.vercel\.app$",
+    r"^https://.*\.onrender\.com$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 # The frontend sends an anonymous-cart token on every request; it is not one of
