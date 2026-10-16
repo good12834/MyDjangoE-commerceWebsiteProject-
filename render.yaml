@@ -43,11 +43,11 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://shophub-frontend-one.vercel.app"
+        value: "https://frontend-good-s-projects2.vercel.app,https://frontend-ten-delta-mthu640p6m.vercel.app,https://shophub-frontend-one.vercel.app"
       - key: FRONTEND_URL
-        value: "https://shophub-frontend-one.vercel.app"
+        value: "https://frontend-good-s-projects2.vercel.app,https://frontend-ten-delta-mthu640p6m.vercel.app,https://shophub-frontend-one.vercel.app"
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://shophub-frontend-one.vercel.app,https://shophub-awd9.onrender.com,https://shophub-api.onrender.com"
+        value: "https://frontend-good-s-projects2.vercel.app,https://frontend-ten-delta-mthu640p6m.vercel.app,https://shophub-frontend-one.vercel.app,https://shophub-awd9.onrender.com,https://shophub-api.onrender.com"
       # Publishable key is public by design — safe to commit.
       - key: STRIPE_PUBLISHABLE_KEY
         value: "pk_test_51S6FlVQg4BXMauysYGfgPUFR0XRVYxespEng4NQoFr9OKQcBJ0pz3XVspEiGrCtMftbpIs3pnvl052QbqavWfDKW00OtJymeIB"

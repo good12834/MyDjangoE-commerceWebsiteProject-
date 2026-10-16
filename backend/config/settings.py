@@ -214,6 +214,11 @@ _KNOWN_FRONTENDS = [
     "http://127.0.0.1:5173",
     "https://shophub-frontend-one.vercel.app",
     "https://shophub-awd9.onrender.com",
+    # Vercel project `frontend` (team good-s-projects2): stable alias + the
+    # current production alias (Vercel regenerates the `ten-delta-*` hostname
+    # when the project's production domain is reassigned).
+    "https://frontend-good-s-projects2.vercel.app",
+    "https://frontend-ten-delta-mthu640p6m.vercel.app",
 ]
 CORS_ALLOWED_ORIGINS = list(
     dict.fromkeys(
@@ -232,6 +237,7 @@ CORS_ALLOWED_ORIGINS = list(
 # calls to the API.
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://shophub-frontend.*\.vercel\.app$",
+    r"^https://frontend.*-good-s-projects2\.vercel\.app$",
     r"^https://.*\.onrender\.com$",
 ]
 CORS_ALLOW_CREDENTIALS = True
