@@ -1,6 +1,7 @@
 """Seed ShopHub with realistic demo data: catalog, users, orders, reviews, coupons."""
 import random
 from datetime import timedelta
+from decimal import Decimal
 
 from django.core.files.base import ContentFile
 from django.core.management import call_command
@@ -264,7 +265,7 @@ def seed_catalog(users):
         product.flash_sale_end = NOW + timedelta(hours=random.randint(20, 48))
         if not product.compare_price:
             product.compare_price = product.price
-            product.price = round(float(product.price) * 0.7, 2)
+            product.price = (Decimal(str(product.price)) * Decimal("0.7")).quantize(Decimal("0.01"))
         product.save()
     return products
 
@@ -287,7 +288,7 @@ def seed_orders(users, products):
         when = NOW - timedelta(days=days_ago, hours=random.randint(0, 20))
         if Order.objects.filter(user=customer, created_at__date=when.date()).exists():
             continue
-        subtotal = 0
+        subtotal = Decimal("0")
         picks = random.sample(products, random.randint(1, 3))
         order = Order(
             user=customer,
@@ -310,7 +311,7 @@ def seed_orders(users, products):
         for product in picks:
             variant = product.variants.order_by("?").first() if product.variants.exists() else None
             qty = random.randint(1, 2)
-            unit = variant.effective_price if variant else product.price
+            unit = Decimal(str(variant.effective_price if variant else product.price))
             OrderItem.objects.create(
                 order=order,
                 product=product,
@@ -326,8 +327,6 @@ def seed_orders(users, products):
             subtotal += unit * qty
             product.sold_count += qty
         Product.objects.bulk_update(picks, ["sold_count"])
-
-        from decimal import Decimal
 
         order.subtotal = subtotal
         order.shipping = Decimal("0") if subtotal >= 150 else Decimal("9.99")
